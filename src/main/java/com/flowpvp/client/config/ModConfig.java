@@ -88,23 +88,25 @@ public final class ModConfig {
     // ---- Static helpers -----------------------------------------------------
 
     public static final RankedLadder[] DISPLAY_MODES = {
-        RankedLadder.GLOBAL, RankedLadder.SWORD, RankedLadder.AXE, RankedLadder.UHC, RankedLadder.VANILLA, 
+        RankedLadder.GLOBAL, RankedLadder.HIGHEST_TIER, RankedLadder.SWORD, RankedLadder.AXE, RankedLadder.UHC, RankedLadder.VANILLA,
         RankedLadder.MACE, RankedLadder.DIAMOND_POT, RankedLadder.NETHERITE_OP, RankedLadder.SMP,
         RankedLadder.DIAMOND_SMP
     };
 
-    private static final Map<RankedLadder, String> MODE_LABELS = Map.of(
-            RankedLadder.GLOBAL, "Global",
-            RankedLadder.SWORD, "Sword",
-            RankedLadder.AXE, "Axe",
-            RankedLadder.UHC, "UHC",
-            RankedLadder.VANILLA, "Vanilla",
-            RankedLadder.MACE, "Mace",
-            RankedLadder.DIAMOND_POT, "Diamond Pot",
-            RankedLadder.NETHERITE_OP, "Netherite OP",
-            RankedLadder.SMP, "SMP",
-            RankedLadder.DIAMOND_SMP, "Diamond SMP"
-    );
+    // Map.of() caps at 10 entries, so had to change it to Map.ofEntries
+    private static final Map<RankedLadder, String> MODE_LABELS = new java.util.HashMap<>(Map.ofEntries(
+            Map.entry(RankedLadder.GLOBAL, "Global"),
+            Map.entry(RankedLadder.HIGHEST_TIER, "Highest Tier"),
+            Map.entry(RankedLadder.SWORD, "Sword"),
+            Map.entry(RankedLadder.AXE, "Axe"),
+            Map.entry(RankedLadder.UHC, "UHC"),
+            Map.entry(RankedLadder.VANILLA, "Vanilla"),
+            Map.entry(RankedLadder.MACE, "Mace"),
+            Map.entry(RankedLadder.DIAMOND_POT, "Diamond Pot"),
+            Map.entry(RankedLadder.NETHERITE_OP, "Netherite OP"),
+            Map.entry(RankedLadder.SMP, "SMP"),
+            Map.entry(RankedLadder.DIAMOND_SMP, "Diamond SMP")
+    ));
 
     /** Human-readable label for a display mode key. */
     public static String displayModeLabel(RankedLadder mode) {
