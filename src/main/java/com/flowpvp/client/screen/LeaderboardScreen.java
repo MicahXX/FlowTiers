@@ -23,6 +23,9 @@ public class LeaderboardScreen extends Screen {
     private String currentMode = "GLOBAL";
     private int scrollOffset = 0;
 
+    // Bottom "Load More" button reference so we can update its label
+    private ButtonWidget loadMoreButton;
+
     public LeaderboardScreen() {
         super(Text.literal("FlowPvP Leaderboards"));
     }
@@ -52,6 +55,12 @@ public class LeaderboardScreen extends Screen {
             }).dimensions(bx, by, tabW, tabH).build());
         }
 
+        // "Load More" button at the bottom centre
+        loadMoreButton = ButtonWidget.builder(Text.literal("Load More"), btn -> {
+            LeaderboardManager.loadMore();
+        }).dimensions(width / 2 - 50, height - 24, 100, 18).build();
+        addDrawableChild(loadMoreButton);
+
         LeaderboardManager.load(currentMode);
     }
 
@@ -59,6 +68,20 @@ public class LeaderboardScreen extends Screen {
     public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
         scrollOffset -= (int)(verticalAmount * 12);
         if (scrollOffset < 0) scrollOffset = 0;
+
+        // Auto-load more when user scrolls near the bottom of the list
+        List<LeaderboardManager.Entry> list = LeaderboardManager.getCached();
+        if (!list.isEmpty()) {
+            int entryStartY = 74;
+            int lineH = 13;
+            int totalContentHeight = list.size() * lineH;
+            int visibleHeight = height - entryStartY - 30;
+            int maxScroll = Math.max(0, totalContentHeight - visibleHeight);
+            if (scrollOffset >= maxScroll - 30 && LeaderboardManager.hasMorePages() && !LeaderboardManager.isLoading()) {
+                LeaderboardManager.loadMore();
+            }
+        }
+
         return true;
     }
 
@@ -69,7 +92,7 @@ public class LeaderboardScreen extends Screen {
         // Title
         ctx.drawCenteredTextWithShadow(textRenderer,
             "FlowPvP Leaderboard — " + currentMode,
-            width / 2, 10, 0x00BFFF);
+            width / 2, 10, 0xFF00BFFF);
 
         List<LeaderboardManager.Entry> list = LeaderboardManager.getCached();
 
@@ -77,21 +100,30 @@ public class LeaderboardScreen extends Screen {
         int lineH = 13;
 
         if (list.isEmpty()) {
+            String msg = LeaderboardManager.isLoading() ? "Loading..." : "No data.";
             ctx.drawCenteredTextWithShadow(textRenderer,
-                "Loading...", width / 2, entryStartY + 20, 0xAAAAAA);
+                msg, width / 2, entryStartY + 20, 0xFFAAAAAA);
+            // Hide load more when nothing loaded
+            if (loadMoreButton != null) loadMoreButton.visible = false;
             return;
         }
 
         // Column headers
-        ctx.drawTextWithShadow(textRenderer, "#",     50, entryStartY - 12, 0x888888);
-        ctx.drawTextWithShadow(textRenderer, "Player", 80, entryStartY - 12, 0x888888);
-        ctx.drawTextWithShadow(textRenderer, "ELO",   220, entryStartY - 12, 0x888888);
+        ctx.drawTextWithShadow(textRenderer, "#",     50, entryStartY - 12, 0xFF888888);
+        ctx.drawTextWithShadow(textRenderer, "Player", 80, entryStartY - 12, 0xFF888888);
+        ctx.drawTextWithShadow(textRenderer, "ELO",   220, entryStartY - 12, 0xFF888888);
+
+        // Clamp scroll
+        int totalContentHeight = list.size() * lineH;
+        int visibleHeight = height - entryStartY - 30;
+        int maxScroll = Math.max(0, totalContentHeight - visibleHeight);
+        if (scrollOffset > maxScroll) scrollOffset = maxScroll;
 
         for (int i = 0; i < list.size(); i++) {
             LeaderboardManager.Entry e = list.get(i);
             int y = entryStartY + i * lineH - scrollOffset;
 
-            if (y < entryStartY - lineH || y > height - 20) continue;
+            if (y < entryStartY - lineH || y > height - 30) continue;
 
             // Alternating row background
             if (i % 2 == 0) {
@@ -100,11 +132,32 @@ public class LeaderboardScreen extends Screen {
 
             ctx.drawTextWithShadow(textRenderer,
                 String.valueOf(e.position > 0 ? e.position : i + 1),
-                50, y, 0xFFFF55);
+                50, y, 0xFFFFFF55);
 
-            ctx.drawTextWithShadow(textRenderer, e.name,    80, y, 0xFFFFFF);
-            ctx.drawTextWithShadow(textRenderer, e.elo + " ELO", 220, y, 0xAAAAAA);
+            ctx.drawTextWithShadow(textRenderer, e.name,    80, y, 0xFFFFFFFF);
+            ctx.drawTextWithShadow(textRenderer, e.elo + " ELO", 220, y, 0xFFAAAAAA);
         }
+
+        // Update Load More button
+        if (loadMoreButton != null) {
+            loadMoreButton.visible = true;
+            if (LeaderboardManager.isLoading()) {
+                loadMoreButton.setMessage(Text.literal("Loading..."));
+                loadMoreButton.active = false;
+            } else if (!LeaderboardManager.hasMorePages()) {
+                loadMoreButton.setMessage(Text.literal("No more pages"));
+                loadMoreButton.active = false;
+            } else {
+                loadMoreButton.setMessage(Text.literal("Load More"));
+                loadMoreButton.active = true;
+            }
+        }
+
+        // Page info bottom-left
+        int page = (list.size() + 9) / 10;
+        ctx.drawTextWithShadow(textRenderer,
+            list.size() + " players | page " + page,
+            5, height - 20, 0xFF666666);
     }
 
     @Override

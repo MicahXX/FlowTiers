@@ -29,6 +29,9 @@ public class LeaderboardManager {
 
     private static List<Entry> cached = new ArrayList<>();
     private static String cachedMode = "";
+    private static int currentPage = 1;
+    private static boolean hasMorePages = true;
+    private static boolean isLoading = false;
 
     public static List<Entry> getCached() {
         return cached;
@@ -38,13 +41,38 @@ public class LeaderboardManager {
         return cachedMode;
     }
 
+    public static boolean isLoading() {
+        return isLoading;
+    }
+
+    public static boolean hasMorePages() {
+        return hasMorePages;
+    }
+
+    /** Load page 1 of a mode, resetting any previous results. */
     public static void load(String mode) {
         String upperMode = mode.toUpperCase();
+        currentPage = 1;
+        hasMorePages = true;
+        cached = new ArrayList<>();
+        cachedMode = upperMode;
+        fetchPage(upperMode, 1, false);
+    }
+
+    /** Append the next page to the existing results. */
+    public static void loadMore() {
+        if (isLoading || !hasMorePages || cachedMode.isEmpty()) return;
+        fetchPage(cachedMode, currentPage + 1, true);
+    }
+
+    private static void fetchPage(String upperMode, int page, boolean append) {
+        if (isLoading) return;
+        isLoading = true;
         MinecraftClient mc = MinecraftClient.getInstance();
 
         CompletableFuture.supplyAsync(() -> {
             try {
-                String urlStr = "https://flowpvp.gg/api/leaderboard/" + upperMode + "?page=1";
+                String urlStr = "https://flowpvp.gg/api/leaderboard/" + upperMode + "?page=" + page;
                 HttpURLConnection conn = (HttpURLConnection) new URL(urlStr).openConnection();
                 conn.setRequestMethod("GET");
                 conn.setRequestProperty("User-Agent", "FlowTiers-Mod/1.0");
@@ -54,20 +82,18 @@ public class LeaderboardManager {
 
                 int status = conn.getResponseCode();
                 if (status != 200) {
-                    System.err.println("[FlowTiers] Leaderboard HTTP " + status + " for mode " + upperMode);
+                    System.err.println("[FlowTiers] Leaderboard HTTP " + status + " for mode " + upperMode + " page " + page);
                     return new ArrayList<Entry>();
                 }
 
                 JsonElement root = JsonParser.parseReader(new InputStreamReader(conn.getInputStream()));
                 List<Entry> result = new ArrayList<>();
 
-                // API may return a plain array or an object with a data/players field
                 JsonArray arr = null;
                 if (root.isJsonArray()) {
                     arr = root.getAsJsonArray();
                 } else if (root.isJsonObject()) {
                     JsonObject obj = root.getAsJsonObject();
-                    // Try common wrapper field names
                     for (String key : new String[]{"data", "players", "entries", "results", "leaderboard"}) {
                         if (obj.has(key) && obj.get(key).isJsonArray()) {
                             arr = obj.getAsJsonArray(key);
@@ -83,11 +109,9 @@ public class LeaderboardManager {
                     for (JsonElement el : arr) {
                         JsonObject e = el.getAsJsonObject();
 
-                        // Name: try lastKnownName, then name, then username
                         String name = getStr(e, "lastKnownName", "name", "username", "playerName");
                         if (name == null) continue;
 
-                        // ELO: for GLOBAL use globalElo; for ladders use totalRating; also try elo
                         int elo;
                         if ("GLOBAL".equals(upperMode)) {
                             elo = getInt(e, "globalElo", "elo", "rating", "totalRating");
@@ -95,9 +119,7 @@ public class LeaderboardManager {
                             elo = getInt(e, "totalRating", "elo", "rating", "globalElo");
                         }
 
-                        // Position: try position, rank, globalPosition
                         int pos = getInt(e, "position", "rank", "globalPosition");
-
                         result.add(new Entry(name, elo, pos));
                     }
                 }
@@ -109,8 +131,21 @@ public class LeaderboardManager {
                 return new ArrayList<Entry>();
             }
         }).thenAcceptAsync(result -> mc.execute(() -> {
-            cached = result;
-            cachedMode = upperMode;
+            isLoading = false;
+            if (result.isEmpty()) {
+                hasMorePages = false;
+            } else {
+                if (append) {
+                    List<Entry> combined = new ArrayList<>(cached);
+                    combined.addAll(result);
+                    cached = combined;
+                } else {
+                    cached = result;
+                }
+                currentPage = page;
+                // If fewer than 10 entries returned, assume last page
+                hasMorePages = result.size() >= 10;
+            }
         }));
     }
 
