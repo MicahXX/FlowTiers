@@ -12,6 +12,8 @@ import java.io.Reader;
 import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 public final class ModConfig {
@@ -60,11 +62,11 @@ public final class ModConfig {
     /** Show a tier line above player usernames in the world. */
     public boolean showTierAboveHead = true;
 
-    /** Show ELO value in the nametag tier line. */
-    public boolean nametagShowElo = true;
-
-    /** Show leaderboard position in the nametag tier line. */
-    public boolean nametagShowPosition = true;
+    /**
+     * Ordered list of nametag display components.
+     * Controls what shows above heads, their order, and label options.
+     */
+    public List<NametagComponentConfig> nametagLayout = defaultNametagLayout();
 
     // ---- Tab list -----------------------------------------------------------
 
@@ -84,6 +86,29 @@ public final class ModConfig {
      * Leave empty to auto-detect from the game session.
      */
     public String usernameOverride = "";
+
+    // ---- Nametag layout defaults --------------------------------------------
+
+    public static List<NametagComponentConfig> defaultNametagLayout() {
+        List<NametagComponentConfig> list = new ArrayList<>();
+        list.add(new NametagComponentConfig(NametagComponent.TIER,     true,  false));
+        list.add(new NametagComponentConfig(NametagComponent.ELO,      true,  true));
+        list.add(new NametagComponentConfig(NametagComponent.POSITION,  true,  true));
+        list.add(new NametagComponentConfig(NametagComponent.GAMEMODE,  true,  false));
+        return list;
+    }
+
+    /** Fill in any null fields that may result from loading an older config file. */
+    private void normalize() {
+        if (nametagLayout == null || nametagLayout.isEmpty()) {
+            nametagLayout = defaultNametagLayout();
+        }
+        // Remove any entries whose type deserialized as null
+        nametagLayout.removeIf(c -> c == null || c.type == null);
+        if (nametagLayout.isEmpty()) {
+            nametagLayout = defaultNametagLayout();
+        }
+    }
 
     // ---- Static helpers -----------------------------------------------------
 
@@ -142,7 +167,10 @@ public final class ModConfig {
         if (Files.exists(path)) {
             try (Reader reader = Files.newBufferedReader(path)) {
                 ModConfig loaded = GSON.fromJson(reader, ModConfig.class);
-                if (loaded != null) INSTANCE = loaded;
+                if (loaded != null) {
+                    loaded.normalize();
+                    INSTANCE = loaded;
+                }
             } catch (IOException e) {
                 LOGGER.warn("[FlowTiers] Failed to load config, using defaults: {}", e.getMessage());
             }

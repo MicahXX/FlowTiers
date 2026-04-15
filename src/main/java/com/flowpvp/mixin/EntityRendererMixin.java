@@ -2,6 +2,8 @@ package com.flowpvp.mixin;
 
 import com.flowpvp.client.FlowPvPClient;
 import com.flowpvp.client.config.ModConfig;
+import com.flowpvp.client.config.NametagComponent;
+import com.flowpvp.client.config.NametagComponentConfig;
 import com.flowpvp.client.data.PlayerStats;
 import com.flowpvp.client.data.RankedLadder;
 import com.flowpvp.client.data.TierInfo;
@@ -24,6 +26,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.text.NumberFormat;
+import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 
@@ -166,34 +169,59 @@ public abstract class EntityRendererMixin {
     // =========================================================================
 
     private static Text buildTierText(PlayerStats stats) {
-        RankedLadder mode   = ModConfig.INSTANCE.displayMode;
-        TierInfo tier = stats.getDisplayTier(mode);
-        int elo       = stats.getDisplayElo(mode);
-        int pos       = stats.getDisplayPosition(mode);
+        RankedLadder mode    = ModConfig.INSTANCE.displayMode;
+        TierInfo tier        = stats.getDisplayTier(mode);
+        int elo              = stats.getDisplayElo(mode);
+        int pos              = stats.getDisplayPosition(mode);
+        NumberFormat fmt     = NumberFormat.getNumberInstance(Locale.US);
 
-        // Tier name in its own color
-        net.minecraft.text.MutableText out =
-                net.minecraft.text.Text.literal(tier.displayName)
-                        .setStyle(Style.EMPTY.withColor(tier.rgb()));
+        List<NametagComponentConfig> layout = ModConfig.INSTANCE.nametagLayout;
+        if (layout == null || layout.isEmpty()) layout = ModConfig.defaultNametagLayout();
 
-        // ELO in white
-        if (ModConfig.INSTANCE.nametagShowElo) {
-            out.append(net.minecraft.text.Text.literal(" | " + elo + " ELO")
-                    .setStyle(Style.EMPTY.withColor(0xFFFFFF)));
-        }
+        net.minecraft.text.MutableText out = net.minecraft.text.Text.empty();
+        boolean first = true;
 
-        // Position in yellow
-        if (ModConfig.INSTANCE.nametagShowPosition && pos > 0) {
-            NumberFormat fmt = NumberFormat.getNumberInstance(Locale.US);
-            String label = (mode == RankedLadder.GLOBAL) ? " Globally" : " Ranked";
-            out.append(net.minecraft.text.Text.literal(" | #" + fmt.format(pos) + label)
-                    .setStyle(Style.EMPTY.withColor(0xFFD700)));
-        }
+        for (NametagComponentConfig comp : layout) {
+            if (!comp.enabled || comp.type == null) continue;
 
-        // Mode label in gray
-        if (mode != RankedLadder.GLOBAL) {
-            out.append(net.minecraft.text.Text.literal("  [" + ModConfig.displayModeLabel(mode) + "]")
-                    .setStyle(Style.EMPTY.withColor(0xAAAAAA)));
+            net.minecraft.text.MutableText segment = null;
+
+            switch (comp.type) {
+                case TIER:
+                    segment = net.minecraft.text.Text.literal(tier.displayName)
+                            .setStyle(Style.EMPTY.withColor(tier.rgb()));
+                    break;
+                case ELO:
+                    segment = net.minecraft.text.Text.literal(
+                            comp.showLabel ? (elo + " ELO") : String.valueOf(elo))
+                            .setStyle(Style.EMPTY.withColor(0xFFFFFF));
+                    break;
+                case POSITION:
+                    if (pos > 0) {
+                        String suffix = comp.showLabel
+                                ? (mode == RankedLadder.GLOBAL ? " Globally" : " Ranked")
+                                : "";
+                        segment = net.minecraft.text.Text.literal("#" + fmt.format(pos) + suffix)
+                                .setStyle(Style.EMPTY.withColor(0xFFD700));
+                    }
+                    break;
+                case GAMEMODE:
+                    if (mode != RankedLadder.GLOBAL) {
+                        segment = net.minecraft.text.Text.literal(
+                                "[" + ModConfig.displayModeLabel(mode) + "]")
+                                .setStyle(Style.EMPTY.withColor(0xAAAAAA));
+                    }
+                    break;
+            }
+
+            if (segment != null) {
+                if (!first) {
+                    out.append(net.minecraft.text.Text.literal(" | ")
+                            .setStyle(Style.EMPTY.withColor(0x888888)));
+                }
+                out.append(segment);
+                first = false;
+            }
         }
 
         return out;

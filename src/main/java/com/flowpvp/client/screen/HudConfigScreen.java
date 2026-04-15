@@ -50,9 +50,10 @@ public final class HudConfigScreen extends Screen {
         widgetH = hud.getWidgetHeight();
 
         int cx      = width / 2;
-        int row2Y   = height - 30;  // Tab / Done / Nametag row
-        int row1Y   = row2Y - 50;   // Mode row
-        int row0Y   = row1Y - 50;   // W/L and Streak row
+        int row2Y   = height - 30;   // Tab / Done / Nametag row
+        int rowNL   = row2Y - 28;    // Nametag Layout button row
+        int row1Y   = rowNL - 28;    // Mode row
+        int row0Y   = row1Y - 46;    // W/L and Streak row
 
         // ---- Row 0: W/L and Streak toggles ----
         wlToggle = ButtonWidget.builder(wlLabel(), btn -> {
@@ -81,6 +82,13 @@ public final class HudConfigScreen extends Screen {
                 .dimensions(cx - 75, row1Y, 150, 20)
                 .build();
         addDrawableChild(modeButton);
+
+        // ---- Row NL: Nametag Layout shortcut ----
+        addDrawableChild(ButtonWidget.builder(Text.literal("Nametag Layout \u2192"), btn -> {
+                    if (client != null) client.setScreen(new NametagLayoutScreen(this));
+                })
+                .dimensions(cx - 75, rowNL, 150, 20)
+                .build());
 
         // ---- Row 2: Tab list / Done / Nametag ----
         tabListToggle = ButtonWidget.builder(tabListLabel(), btn -> {
@@ -126,8 +134,9 @@ public final class HudConfigScreen extends Screen {
         // Row labels
         int cx    = width / 2;
         int row2Y = height - 30;
-        int row1Y = row2Y - 50;
-        int row0Y = row1Y - 50;
+        int rowNL = row2Y - 28;
+        int row1Y = rowNL - 28;
+        int row0Y = row1Y - 46;
 
         ctx.drawCenteredTextWithShadow(textRenderer, "HUD Win/Loss",
                 cx - 106 + 50, row0Y - 12, HINT_COLOR);
