@@ -47,8 +47,8 @@ public abstract class EntityRendererMixin {
     //?}
 
     /** Guards against infinite recursion when we re-call renderLabelIfPresent. */
-//    private static final ThreadLocal<Boolean> RENDERING_TIER =
-//            ThreadLocal.withInitial(() -> false);
+    private static final ThreadLocal<Boolean> RENDERING_TIER =
+            ThreadLocal.withInitial(() -> false);
 
     // =========================================================================
     // 1.21.10+ (OrderedRenderCommandQueue API)
