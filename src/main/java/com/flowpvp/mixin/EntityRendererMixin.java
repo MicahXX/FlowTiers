@@ -35,10 +35,10 @@ public abstract class EntityRendererMixin {
     // =========================================================================
 
     //? if >=1.21.2 && <1.21.9 {
-    @Shadow
-    protected abstract void renderLabelIfPresent(
-            EntityRenderState state, Text text,
-            MatrixStack matrices, VertexConsumerProvider vertexConsumers, int light);
+//    @Shadow
+//    protected abstract void renderLabelIfPresent(
+//            EntityRenderState state, Text text,
+//            MatrixStack matrices, VertexConsumerProvider vertexConsumers, int light);
     //?} else if <1.21.2 {
     /*@Shadow
     protected abstract void renderLabelIfPresent(
@@ -47,42 +47,42 @@ public abstract class EntityRendererMixin {
     //?}
 
     /** Guards against infinite recursion when we re-call renderLabelIfPresent. */
-    private static final ThreadLocal<Boolean> RENDERING_TIER =
-            ThreadLocal.withInitial(() -> false);
+//    private static final ThreadLocal<Boolean> RENDERING_TIER =
+//            ThreadLocal.withInitial(() -> false);
 
     // =========================================================================
     // 1.21.10+ (OrderedRenderCommandQueue API)
     // =========================================================================
 
     //? if >=1.21.9 {
-    /*@Inject(
-        method = "updateRenderState(Lnet/minecraft/entity/Entity;" +
-                 "Lnet/minecraft/client/render/entity/state/EntityRenderState;F)V",
-        at = @At("RETURN")
-    )
-    private void flowpvp$modifyNametag19(Entity entity, EntityRenderState state,
-                                          float tickDelta, CallbackInfo ci) {
-        if (!ModConfig.INSTANCE.showTierAboveHead) return;
-        if (!(entity instanceof PlayerEntity player)) return;
-        // nameLabelPos is null when the nametag is not being rendered
-        if (state.nameLabelPos == null) return;
-
-        UUID uuid = player.getUuid();
-        PlayerStats stats = FlowPvPClient.STATS_CACHE.getCachedByUuid(uuid);
-        if (stats == null) {
-            FlowPvPClient.STATS_CACHE.scheduleStatsByUuid(uuid);
-            return;
-        }
-
-        // Append tier text next to the player name. vanilla renders displayName automatically.
-        Text tierText = buildTierText(stats);
-        if (state.displayName != null) {
-            state.displayName = net.minecraft.text.Text.empty()
-                    .append(state.displayName)
-                    .append(net.minecraft.text.Text.literal("  "))
-                    .append(tierText);
-        }
-    }*/
+//    @Inject(
+//        method = "updateRenderState(Lnet/minecraft/entity/Entity;" +
+//                 "Lnet/minecraft/client/render/entity/state/EntityRenderState;F)V",
+//        at = @At("RETURN")
+//    )
+//    private void flowpvp$modifyNametag19(Entity entity, EntityRenderState state,
+//                                          float tickDelta, CallbackInfo ci) {
+//        if (!ModConfig.INSTANCE.showTierAboveHead) return;
+//        if (!(entity instanceof PlayerEntity player)) return;
+//        // nameLabelPos is null when the nametag is not being rendered
+//        if (state.nameLabelPos == null) return;
+//
+//        UUID uuid = player.getUuid();
+//        PlayerStats stats = FlowPvPClient.STATS_CACHE.getCachedByUuid(uuid);
+//        if (stats == null) {
+//            FlowPvPClient.STATS_CACHE.scheduleStatsByUuid(uuid);
+//            return;
+//        }
+//
+//        // Append tier text next to the player name. vanilla renders displayName automatically.
+//        Text tierText = buildTierText(stats);
+//        if (state.displayName != null) {
+//            state.displayName = net.minecraft.text.Text.empty()
+//                    .append(state.displayName)
+//                    .append(net.minecraft.text.Text.literal("  "))
+//                    .append(tierText);
+//        }
+//    }
     //?}
 
     // =========================================================================
@@ -91,56 +91,32 @@ public abstract class EntityRendererMixin {
 
     //? if >=1.21.2 && <1.21.9 {
     @Inject(
-        method = "updateRenderState(Lnet/minecraft/entity/Entity;" +
-                 "Lnet/minecraft/client/render/entity/state/EntityRenderState;F)V",
-        at = @At("RETURN")
+            method = "updateRenderState(Lnet/minecraft/entity/Entity;" +
+                    "Lnet/minecraft/client/render/entity/state/EntityRenderState;F)V",
+            at = @At("RETURN")
     )
-    private void flowpvp$scheduleFetch(Entity entity, EntityRenderState state,
-                                        float tickDelta, CallbackInfo ci) {
+    private void flowpvp$modifyNametag(Entity entity, EntityRenderState state,
+                                       float tickDelta, CallbackInfo ci) {
         if (!ModConfig.INSTANCE.showTierAboveHead) return;
         if (!(entity instanceof PlayerEntity player)) return;
+        if (state.displayName == null) return;
 
         UUID uuid = player.getUuid();
-        if (FlowPvPClient.STATS_CACHE.getCachedByUuid(uuid) == null) {
+        PlayerStats stats = FlowPvPClient.STATS_CACHE.getCachedByUuid(uuid);
+        if (stats == null) {
             FlowPvPClient.STATS_CACHE.scheduleStatsByUuid(uuid);
+            return;
         }
-    }
-
-    @Inject(
-        method = "renderLabelIfPresent(" +
-                 "Lnet/minecraft/client/render/entity/state/EntityRenderState;" +
-                 "Lnet/minecraft/text/Text;" +
-                 "Lnet/minecraft/client/util/math/MatrixStack;" +
-                 "Lnet/minecraft/client/render/VertexConsumerProvider;I)V",
-        at = @At("TAIL")
-    )
-    private void flowpvp$renderTierLine(EntityRenderState state, Text text,
-                                         MatrixStack matrices,
-                                         VertexConsumerProvider vertexConsumers,
-                                         int light, CallbackInfo ci) {
-        if (RENDERING_TIER.get()) return;
-        if (!ModConfig.INSTANCE.showTierAboveHead) return;
-        if (text == null) return;
-
-        String username = text.getString();
-        if (!isValidUsername(username)) return;
-
-        PlayerStats stats = FlowPvPClient.STATS_CACHE.getCachedByUsername(username);
-        if (stats == null) return;
 
         Text tierText = buildTierText(stats);
-
-        matrices.push();
-        matrices.translate(0.0, 1.5, 0.0);
-        RENDERING_TIER.set(true);
-        try {
-            this.renderLabelIfPresent(state, tierText, matrices, vertexConsumers, light);
-        } finally {
-            RENDERING_TIER.set(false);
+        if (state.displayName != null) {
+            state.displayName = net.minecraft.text.Text.empty()
+                    .append(state.displayName)
+                    .append(net.minecraft.text.Text.literal("  "))
+                    .append(tierText);
         }
-        matrices.pop();
     }
-    //?}
+//?}
 
     // =========================================================================
     // 1.21 / 1.21.1 (legacy entity-based API)
@@ -209,13 +185,13 @@ public abstract class EntityRendererMixin {
         // Position in yellow
         if (ModConfig.INSTANCE.nametagShowPosition && pos > 0) {
             NumberFormat fmt = NumberFormat.getNumberInstance(Locale.US);
-            String label = "GLOBAL".equals(mode) ? " Globally" : " Ranked";
+            String label = (mode == RankedLadder.GLOBAL) ? " Globally" : " Ranked";
             out.append(net.minecraft.text.Text.literal(" | #" + fmt.format(pos) + label)
                     .setStyle(Style.EMPTY.withColor(0xFFD700)));
         }
 
         // Mode label in gray
-        if (!"GLOBAL".equals(mode)) {
+        if (mode != RankedLadder.GLOBAL) {
             out.append(net.minecraft.text.Text.literal("  [" + ModConfig.displayModeLabel(mode) + "]")
                     .setStyle(Style.EMPTY.withColor(0xAAAAAA)));
         }

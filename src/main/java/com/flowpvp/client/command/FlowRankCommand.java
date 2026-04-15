@@ -120,7 +120,7 @@ public final class FlowRankCommand {
     boolean first = true;
 
     for (RankedLadder key : RankedLadder.values()) {
-        if (key == RankedLadder.GLOBAL) continue;
+        if (key == RankedLadder.GLOBAL || key == RankedLadder.HIGHEST_TIER) continue;
         PlayerStats.LadderStats ls = stats.perLadder.get(key);
         if (ls == null || ls.isUnranked()) continue;
 

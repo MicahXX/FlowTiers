@@ -75,10 +75,10 @@ public final class FlowPvPHud {
     }
 
     private void drawStats(DrawContext ctx, TextRenderer tr, int x, int y) {
-        ModConfig cfg       = ModConfig.INSTANCE;
-        PlayerStats stats   = cachedStats;
-        RankedLadder mode         = cfg.displayMode;
-        NumberFormat fmt    = NumberFormat.getNumberInstance(Locale.US);
+        ModConfig cfg     = ModConfig.INSTANCE;
+        PlayerStats stats = cachedStats;
+        RankedLadder mode = cfg.displayMode;
+        NumberFormat fmt  = NumberFormat.getNumberInstance(Locale.US);
 
         TierInfo tier = stats.getDisplayTier(mode);
         int elo       = stats.getDisplayElo(mode);
@@ -86,13 +86,22 @@ public final class FlowPvPHud {
         int wins      = stats.getDisplayWins(mode);
         int losses    = stats.getDisplayLosses(mode);
         int streak    = stats.getDisplayStreak(mode);
-        boolean perLadder = !"GLOBAL".equals(mode);
 
-        // ---- Compute line content ----
-        String headerLine = "GLOBAL".equals(mode)
-                ? "FlowTiers"
-                : "FlowTiers  [" + ModConfig.displayModeLabel(mode) + "]";
+        boolean perLadder = mode != RankedLadder.GLOBAL;
 
+        // ---- Compute header line ----
+        String headerLine;
+        if (mode == RankedLadder.GLOBAL) {
+            headerLine = "FlowTiers";
+        } else if (mode == RankedLadder.HIGHEST_TIER) {
+            // Show which ladder was auto-selected as the best
+            RankedLadder best = stats.getHighestTierLadder();
+            headerLine = "FlowTiers  [" + ModConfig.displayModeLabel(best) + " \u2605]";
+        } else {
+            headerLine = "FlowTiers  [" + ModConfig.displayModeLabel(mode) + "]";
+        }
+
+        // ---- Compute optional lines ----
         String tierEloLine = buildTierEloLine(cfg, tier, elo);
 
         String posLine = (cfg.hudShowPosition && pos > 0)
@@ -101,9 +110,9 @@ public final class FlowPvPHud {
 
         String wlLine = (cfg.hudShowWinLoss && perLadder)
                 ? wins + "W  " + losses + "L"
-                  + (wins + losses > 0
-                     ? "  (" + String.format("%.0f%%", (double) wins / (wins + losses) * 100) + ")"
-                     : "")
+                + (wins + losses > 0
+                ? "  (" + String.format("%.0f%%", (double) wins / (wins + losses) * 100) + ")"
+                : "")
                 : null;
 
         String streakLine = (cfg.hudShowStreak && perLadder)
