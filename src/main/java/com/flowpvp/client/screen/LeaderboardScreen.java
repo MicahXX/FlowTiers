@@ -72,7 +72,7 @@ public class LeaderboardScreen extends Screen {
         // Auto-load more when user scrolls near the bottom of the list
         List<LeaderboardManager.Entry> list = LeaderboardManager.getCached();
         if (!list.isEmpty()) {
-            int entryStartY = 74;
+            int entryStartY = 82;
             int lineH = 13;
             int totalContentHeight = list.size() * lineH;
             int visibleHeight = height - entryStartY - 30;
@@ -91,39 +91,42 @@ public class LeaderboardScreen extends Screen {
 
         // Title
         ctx.drawCenteredTextWithShadow(textRenderer,
-            "FlowPvP Leaderboard — " + currentMode,
-            width / 2, 10, 0xFF00BFFF);
+                "FlowPvP Leaderboard — " + currentMode,
+                width / 2, 10, 0xFF00BFFF);
 
         List<LeaderboardManager.Entry> list = LeaderboardManager.getCached();
 
-        int entryStartY = 74;
+        int entryStartY = 82;
         int lineH = 13;
+        int bottomBarY = height - 30;
 
         if (list.isEmpty()) {
             String msg = LeaderboardManager.isLoading() ? "Loading..." : "No data.";
             ctx.drawCenteredTextWithShadow(textRenderer,
-                msg, width / 2, entryStartY + 20, 0xFFAAAAAA);
-            // Hide load more when nothing loaded
+                    msg, width / 2, entryStartY + 20, 0xFFAAAAAA);
             if (loadMoreButton != null) loadMoreButton.visible = false;
             return;
         }
 
-        // Column headers
-        ctx.drawTextWithShadow(textRenderer, "#",     50, entryStartY - 12, 0xFF888888);
+        // Column headers (drawn outside the scissor region so they don't scroll away)
+        ctx.drawTextWithShadow(textRenderer, "#",      50, entryStartY - 12, 0xFF888888);
         ctx.drawTextWithShadow(textRenderer, "Player", 80, entryStartY - 12, 0xFF888888);
         ctx.drawTextWithShadow(textRenderer, "ELO",   220, entryStartY - 12, 0xFF888888);
 
         // Clamp scroll
         int totalContentHeight = list.size() * lineH;
-        int visibleHeight = height - entryStartY - 30;
+        int visibleHeight = bottomBarY - entryStartY;
         int maxScroll = Math.max(0, totalContentHeight - visibleHeight);
         if (scrollOffset > maxScroll) scrollOffset = maxScroll;
+
+        ctx.enableScissor(0, entryStartY, width, bottomBarY);
 
         for (int i = 0; i < list.size(); i++) {
             LeaderboardManager.Entry e = list.get(i);
             int y = entryStartY + i * lineH - scrollOffset;
 
-            if (y < entryStartY - lineH || y > height - 30) continue;
+            // Skip rows fully outside the visible window
+            if (y + lineH < entryStartY || y > bottomBarY) continue;
 
             // Alternating row background
             if (i % 2 == 0) {
@@ -131,12 +134,13 @@ public class LeaderboardScreen extends Screen {
             }
 
             ctx.drawTextWithShadow(textRenderer,
-                String.valueOf(e.position > 0 ? e.position : i + 1),
-                50, y, 0xFFFFFF55);
-
-            ctx.drawTextWithShadow(textRenderer, e.name,    80, y, 0xFFFFFFFF);
+                    String.valueOf(e.position > 0 ? e.position : i + 1),
+                    50, y, 0xFFFFFF55);
+            ctx.drawTextWithShadow(textRenderer, e.name,         80, y, 0xFFFFFFFF);
             ctx.drawTextWithShadow(textRenderer, e.elo + " ELO", 220, y, 0xFFAAAAAA);
         }
+
+        ctx.disableScissor();
 
         // Update Load More button
         if (loadMoreButton != null) {
@@ -156,8 +160,8 @@ public class LeaderboardScreen extends Screen {
         // Page info bottom-left
         int page = (list.size() + 9) / 10;
         ctx.drawTextWithShadow(textRenderer,
-            list.size() + " players | page " + page,
-            5, height - 20, 0xFF666666);
+                list.size() + " players | page " + page,
+                5, height - 20, 0xFF666666);
     }
 
     @Override

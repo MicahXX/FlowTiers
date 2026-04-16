@@ -31,6 +31,7 @@ Guide will be added later on
 - Fabric API
 - Claude(AI) - Small stuff here and there
 - [Moose1301](https://github.com/Moose1301) - Contributor
+- [Micah](https://github.com/MicahXX) - Contributor
 
 ## Links
 - [FlowPvP Website](https://flowpvp.gg/)
