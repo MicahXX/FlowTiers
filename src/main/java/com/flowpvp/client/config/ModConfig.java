@@ -113,10 +113,10 @@ public final class ModConfig {
 
     public static List<NametagComponentConfig> defaultNametagLayout() {
         List<NametagComponentConfig> list = new ArrayList<>();
-        list.add(new NametagComponentConfig(NametagComponent.TIER,     false, false));
-        list.add(new NametagComponentConfig(NametagComponent.ELO,      true,  false));
+        list.add(new NametagComponentConfig(NametagComponent.GAMEMODE,  true,  false));
+        list.add(new NametagComponentConfig(NametagComponent.TIER,      false, false));
+        list.add(new NametagComponentConfig(NametagComponent.ELO,       true,  false));
         list.add(new NametagComponentConfig(NametagComponent.POSITION,  false, false));
-        list.add(new NametagComponentConfig(NametagComponent.GAMEMODE,  false, false));
         return list;
     }
 
@@ -132,6 +132,19 @@ public final class ModConfig {
         nametagLayout.removeIf(c -> c == null || c.type == null);
         if (nametagLayout.isEmpty()) {
             nametagLayout = defaultNametagLayout();
+            return;
+        }
+        // Migration: if GAMEMODE exists but appears after TIER, move it to just before TIER.
+        // This silently upgrades old configs so the icon always precedes the tier name.
+        int gamemodeIdx = -1, tierIdx = -1;
+        for (int i = 0; i < nametagLayout.size(); i++) {
+            NametagComponent type = nametagLayout.get(i).type;
+            if (type == NametagComponent.GAMEMODE) gamemodeIdx = i;
+            else if (type == NametagComponent.TIER)   tierIdx   = i;
+        }
+        if (gamemodeIdx > tierIdx && tierIdx >= 0) {
+            NametagComponentConfig gamemode = nametagLayout.remove(gamemodeIdx);
+            nametagLayout.add(tierIdx, gamemode);
         }
     }
 
@@ -195,6 +208,7 @@ public final class ModConfig {
                 if (loaded != null) {
                     loaded.normalize();
                     INSTANCE = loaded;
+                    save(); // persist any migrations (e.g. layout reorder) immediately
                 }
             } catch (IOException e) {
                 LOGGER.warn("[FlowTiers] Failed to load config, using defaults: {}", e.getMessage());
